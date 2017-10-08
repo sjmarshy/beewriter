@@ -40,11 +40,11 @@ fn is_txt_or_md(pb: &PathBuf) -> bool {
     ext == "txt" || ext == "md"
 }
 
-fn get_text_files(p: &Path) -> Vec<io::Result<PathBuf>> {
+fn get_text_files(p: &Path) -> io::Result<Vec<PathBuf>> {
     get_files(p)
         .into_iter()
         .filter(|path_buf| path_buf.as_ref().and_then(|pb| Ok(is_txt_or_md(pb))).unwrap_or(false))
-        .collect::<Vec<io::Result<PathBuf>>>()
+        .collect::<Result<Vec<_>, _>>()
 }
 
 fn count_words(file_path: &PathBuf) -> io::Result<usize> {
@@ -62,7 +62,7 @@ fn count_words(file_path: &PathBuf) -> io::Result<usize> {
 
 fn main() {
     let path = Path::new("/Users/sam/Dropbox/notes");
-    let files: Result<Vec<_>, _> = get_text_files(path).into_iter().collect();
+    let files = get_text_files(path);
 
     let initial_count: usize = files.unwrap_or(Vec::new())
         .into_iter()
