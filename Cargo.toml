@@ -1,0 +1,8 @@
+[package]
+name = "beewriter"
+version = "0.1.0"
+authors = ["Sam Marshall <sjmarshy@gmail.com>"]
+
+[dependencies]
+notify = "4.0.0"
+regex = "0.2"
