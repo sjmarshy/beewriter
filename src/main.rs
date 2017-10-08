@@ -34,17 +34,17 @@ fn get_files(p: &Path) -> Vec<io::Result<PathBuf>> {
     read_dir(p).and_then(|dir| Ok(get_file_path(dir))).unwrap_or(Vec::new())
 }
 
-fn is_txt_or_md(pb: &PathBuf) -> bool {
-    let ext = pb.extension().and_then(|e| e.to_str()).unwrap_or("");
+fn is_txt_or_md(path_buf: &io::Result<PathBuf>) -> bool {
+    let oops_err = io::Error::new(io::ErrorKind::NotFound, "oops");
+    let ext = path_buf.as_ref()
+        .and_then(|pb| pb.extension().and_then(|ext| ext.to_str()).ok_or(&oops_err))
+        .unwrap_or("");
 
     ext == "txt" || ext == "md"
 }
 
 fn get_text_files(p: &Path) -> io::Result<Vec<PathBuf>> {
-    get_files(p)
-        .into_iter()
-        .filter(|path_buf| path_buf.as_ref().and_then(|pb| Ok(is_txt_or_md(pb))).unwrap_or(false))
-        .collect::<Result<Vec<_>, _>>()
+    get_files(p).into_iter().filter(is_txt_or_md).collect::<Result<Vec<_>, _>>()
 }
 
 fn count_words(file_path: &PathBuf) -> io::Result<usize> {
