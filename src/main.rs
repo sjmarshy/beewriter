@@ -3,7 +3,7 @@ extern crate regex;
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use regex::Regex;
-use std::fs::{read_dir, File};
+use std::fs::{read_dir, ReadDir, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
@@ -24,25 +24,26 @@ fn watch() -> notify::Result<()> {
     }
 }
 
-fn get_text_files(p: &Path) -> io::Result<Vec<PathBuf>> {
-    let dir = read_dir(p)?;
-    let mut res = Vec::new();
+fn get_file_path(dir: ReadDir) -> Vec<io::Result<PathBuf>> {
+    dir.map(|entry| entry.and_then(|p| Ok(p.path()))).collect::<Vec<io::Result<PathBuf>>>()
+}
 
-    for dir_entry in dir {
-        let entry = dir_entry?;
-        let path = entry.path();
-        let path2 = entry.path();
-        let ext = match path2.extension() {
-            Some(e) => e.to_str().unwrap(),
-            None => "",
-        };
+fn get_files(p: &Path) -> Vec<io::Result<PathBuf>> {
+    read_dir(p).and_then(|dir| Ok(get_file_path(dir))).unwrap_or(Vec::new())
+}
 
-        if ext == "txt" || ext == "md" {
-            res.push(path);
-        }
-    }
+fn is_txt_or_md(pb: PathBuf) -> bool {
+    let ext = pb.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-    Ok(res)
+    ext == "txt" || ext == "md"
+}
+
+fn get_text_files(p: &Path) -> Vec<io::Result<PathBuf>> {
+    get_files(p)
+        .iter()
+        .filter(|path_buf| path_buf.and_then(|pb| Ok(is_txt_or_md(pb))).unwrap_or(false))
+        .map(|path_buf| *path_buf)
+        .collect::<Vec<io::Result<PathBuf>>>()
 }
 
 fn count_words(file_path: &PathBuf) -> io::Result<usize> {
@@ -63,18 +64,26 @@ fn main() {
     let files = get_text_files(path);
     let init: usize = 0;
 
+    let count: usize =
+        files.iter().map(|file| file.and_then(|f| count_words(&f))).fold(init,
+                                                                         |a, x| x.unwrap_or(0) + a);
+
+    /*
     let count: usize = match files {
-        Ok(fs) => fs.iter()
-            .map(|x| {
-                // need to exclude non .txt, .md files!
-                println!("{:?}", x);
-                let y = count_words(x);
-                println!("{:?}", y);
-                y.unwrap()
-            })
-            .fold(init, |a: usize, x: usize| a + x),
+        Ok(fs) => {
+            fs.iter()
+                .map(|x| {
+                    // need to exclude non .txt, .md files!
+                    println!("{:?}", x);
+                    let y = count_words(x);
+                    println!("{:?}", y);
+                    y.unwrap()
+                })
+                .fold(init, |a: usize, x: usize| a + x)
+        }
         Err(e) => panic!("{:?}", e),
     };
+    */
 
     println!("{:?}", count)
 }
